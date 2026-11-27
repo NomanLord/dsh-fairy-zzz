@@ -1,6 +1,6 @@
 {
   "name": "dsh-fairy-zzz",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "绝区零 H.D.D 风格的 Fairy Ⅲ 皮肤：开机动画、眼徽核心与用量气泡、按时段问候、深浅色自动切换与对比度校验、侧栏学习代办卡片、设置页里的 Fairy 工具链动态开关，以及可选的本地 GPT-SoVITS 语音。 / Zenless Zone Zero H.D.D skin for the DSH Web UI with boot animation, eye core, usage bubble, time-of-day greeting, theme check, study-todo card, a per-session Fairy toolchain switch in Settings, and optional local voice.",
   "type": "module",
   "license": "MIT",

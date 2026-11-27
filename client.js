@@ -1689,9 +1689,23 @@ label.fz3-td-row{cursor:pointer}
 .fz3-td-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .fz3-td-row.is-done .fz3-td-text{color:rgba(170,190,215,.58);text-decoration:line-through}
 .fz3-td-date{flex:none;font-size:11px;color:rgba(170,190,215,.65);font-variant-numeric:tabular-nums}
-.fz3-td-mark{flex:none;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(78,230,168,.18);color:#4ee6a8}
-.fz3-td-check{flex:none;width:15px;height:15px;margin:0;accent-color:#57e8ff;cursor:pointer}
+.fz3-td-mark{flex:none;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%!important;corner-shape:round!important;background:rgba(78,230,168,.18);color:#4ee6a8}
+/* 2026-11-27 主人要求：勾选框改成圆形、带灰色边。颜色取 --fz3-edge（深色 = 聊天输入框的
+   #595959），粗细不跟它的 5px 走 —— 5px 套在 16px 的圈上太粗，2px 才看得出是个环。
+   浅色主题的 --fz3-edge 是 #dfe3ea，跟白卡片几乎同色，圈会看不见，所以浅色单独换成中性灰。
+   环与勾选填充都吃 --fz3-tick，一处改完全跟。
+   corner-shape:round 不能省：宿主的 corner-shape 主题层会把 border-radius:50% 画成圆角方块
+   （眼徽那一圈当初也是这样，见 .fz3-eye-ring 那段），不显式交还 round 就永远不是正圆。 */
+.fz3-td-check{--fz3-tick:var(--fz3-edge,#595959);flex:none;box-sizing:border-box;width:16px;height:16px;margin:0;padding:0;appearance:none;-webkit-appearance:none;border:2px solid var(--fz3-tick);border-radius:50%!important;corner-shape:round!important;background:transparent;cursor:pointer;transition:background .15s ease}
+/* 2026-11-27 主人要求：勾上以后底色与对勾都换成绿色，跟「已完成」行的绿勾徽标（.fz3-td-mark）
+   同一套色 —— 底 rgba(78,230,168,.22)、勾 #4ee6a8、圈也转绿，勾选态一眼能认出来。
+   对勾用内联 SVG 画（不依赖字体字形、也不用 ::after 去凑），10px 正好落在 12px 的内容区里。 */
+.fz3-td-check:checked{border-color:#4ee6a8;background-color:rgba(78,230,168,.22);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2.4 6.3 4.7 8.6 9.6 3.6' stroke='%234ee6a8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center;background-size:10px 10px}
+html[data-fz3-theme="light"] .fz3-td-check{--fz3-tick:#9aa3b4}
 .fz3-td-empty{padding:12px 9px;text-align:center;color:rgba(170,190,215,.72);font-size:12px}
+/* 勾掉但还没归档时的说明（2026-11-27 改成「当天不归档」之后才有这一行） */
+.fz3-td-note{padding:2px 9px 6px;font-size:11px;line-height:1.45;color:rgba(170,190,215,.62)}
+html[data-fz3-theme="light"] .fz3-td-note{color:rgba(62,80,118,.72)}
 /* 2026-11-26 合并「已完成 / 归档已完成」：勾选即归档，底栏那个归档按钮已撤。
    已完成行上留一个「退回」，误勾能把任务捡回待办（原来归档只读，误勾无从挽回）。 */
 .fz3-td-restore{flex:none;height:20px;padding:0 6px;border:1px solid rgba(120,160,220,.28);border-radius:6px;background:transparent;color:rgba(178,200,230,.8);font:inherit;font-size:13px;line-height:18px;cursor:pointer;opacity:.55;transition:opacity .15s ease,background .15s ease}
@@ -3449,6 +3463,8 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
         title,
         done: entry.done === true,
         createdAt: typeof entry.createdAt === 'string' ? entry.createdAt : '',
+        /* 勾掉的那一刻；下次打开客户端归档时用它当归档日期，不是重开 App 的那天 */
+        doneAt: typeof entry.doneAt === 'string' ? entry.doneAt : '',
         archivedAt: typeof entry.archivedAt === 'string' ? entry.archivedAt : '',
       }
     }
@@ -3483,15 +3499,16 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
         if (parsed !== null && typeof parsed === 'object' && Array.isArray(parsed.items) && Array.isArray(parsed.archive)) {
           const items = parsed.items.map(todoReadTask).filter(Boolean)
           const archive = parsed.archive.map(todoReadTask).filter(Boolean)
-          /* 2026-11-26 改成「勾选即归档」之后，待办里不该再留着 done=true 的行。
-             旧存档里那种「勾了但还没点归档」的任务，读的时候直接并进已完成，
-             否则它们会顶着删除线卡在待办里、又没有按钮能把它们送走。 */
-          const stale = items.filter((item) => item.done)
-          if (stale.length === 0) return { items, archive }
+          /* 2026-11-27 主人改回「当天勾选不归档」：勾一下只是在待办里划掉，不进「已完成」；
+             等下次打开客户端、读到这份存档时才把它并进归档（归档日期取勾掉的那天）。
+             也就是说这里既是老存档的迁移口，也是每天开工前的那次清理。 */
+          const checked = items.filter((item) => item.done)
+          if (checked.length === 0) return { items, archive }
+          const stamp = new Date().toISOString()
           return {
             items: items.filter((item) => !item.done),
             archive: [
-              ...stale.map((item) => ({ ...item, archivedAt: item.archivedAt || item.createdAt || new Date().toISOString() })),
+              ...checked.map((item) => ({ ...item, doneAt: '', archivedAt: item.doneAt || item.archivedAt || stamp })),
               ...archive,
             ],
           }
@@ -3513,7 +3530,12 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
       state: null,
       listeners: new Set(),
       read() {
-        if (this.state === null) this.state = todoReadState()
+        if (this.state === null) {
+          this.state = todoReadState()
+          /* 读的时候 todoReadState 已经把勾掉的行并进了归档，顺手写回去，
+             免得存档里一直躺着 done=true 的行、每次打开都要再算一遍 */
+          todoWriteState(this.state)
+        }
         return this.state
       },
       update(fn) {
@@ -3668,18 +3690,21 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
         if (inputRef.current !== null) inputRef.current.focus()
       }, [draft, setState])
 
-      /* 2026-11-26 合并：勾一下 = 完成任务，直接落进「已完成」并记时间。
-         原来要先勾、再点底栏「归档已完成」，两步说的是同一件事，撤掉那个按钮。 */
-      const completeTask = useCallback(
+      /* 2026-11-27 主人要求：当天勾选不进「已完成」，只在待办里划掉。
+         所以勾一下是 done=true 留在原列表（行首圆环填实、文字加删除线），
+         再点一下能取消；真正的归档发生在下次打开客户端读存档的时候。 */
+      const toggleTask = useCallback(
         (id) => {
           setState((prev) => {
-            const target = prev.items.find((item) => item.id === id)
-            if (!target) return prev
-            const stamp = new Date().toISOString()
-            return {
-              items: prev.items.filter((item) => item.id !== id),
-              archive: [{ ...target, done: true, archivedAt: stamp }, ...prev.archive],
-            }
+            let hit = false
+            const items = prev.items.map((item) => {
+              if (item.id !== id) return item
+              hit = true
+              return item.done
+                ? { ...item, done: false, doneAt: '' }
+                : { ...item, done: true, doneAt: new Date().toISOString() }
+            })
+            return hit ? { ...prev, items } : prev
           })
         },
         [setState],
@@ -3731,15 +3756,17 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
                   type: 'checkbox',
                   className: 'fz3-td-check',
                   checked: item.done,
-                  onChange: () => completeTask(item.id),
+                  onChange: () => toggleTask(item.id),
                 }),
                 h('span', { className: 'fz3-td-text', title: item.title }, item.title),
               ),
             )
 
+      const checkedCount = state.items.filter((item) => item.done).length
+
       const doneRows =
         state.archive.length === 0
-          ? h('div', { className: 'fz3-td-empty' }, '还没有完成的任务。勾一下待办，它就会出现在这里。')
+          ? h('div', { className: 'fz3-td-empty' }, '还没有归档的任务。勾掉的任务会先留在待办里，下次打开客户端才归档。')
           : state.archive.map((item) => {
               const stamp = todoArchiveStamp(item.archivedAt)
               return h(
@@ -3804,6 +3831,13 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
           'div',
           { className: 'fz3-td-list' },
           activeRows,
+          checkedCount === 0
+            ? null
+            : h(
+                'div',
+                { className: 'fz3-td-note' },
+                '勾掉的 ' + String(checkedCount) + ' 条先留在列表里，下次打开客户端时自动归档',
+              ),
           h(
             'button',
             {
@@ -3918,7 +3952,7 @@ html[data-fz3-theme="light"] [data-conversation-scroll] [class*="_sweep_"] *{
             },
             h(TodoMark, { size: 16 }),
             h('span', { className: 'fz3-td-headlabel' }, '绳匠满级之路'),
-            h('span', { className: 'fz3-td-headcount' }, String(state.items.length)),
+            h('span', { className: 'fz3-td-headcount' }, String(state.items.filter((item) => !item.done).length)),
             h('span', { className: 'fz3-td-caret' }, open ? '▴' : '▸'),
           ),
         ),
