@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fairy 工具链",
+    "description": "只对 Fairy 模式会话生效的工具开关：按勾选动态裁剪模型可见的工具，省下每次请求的 schema token；设置 → Fairy → 工具链里随时开关。"
+  }
+}

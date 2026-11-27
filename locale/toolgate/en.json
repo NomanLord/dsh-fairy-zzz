@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Fairy toolchain",
+    "description": "A tool switch scoped to Fairy-mode sessions: trims the tool schemas each request carries to the tools you tick, and can be toggled anytime under Settings → Fairy → Toolchain."
+  }
+}

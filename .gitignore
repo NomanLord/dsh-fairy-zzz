@@ -1,0 +1,17 @@
+# 运行期文件，不进仓库
+cache/
+voice-home.txt
+voice-speed.txt
+node_modules/
+*.log
+*.tmp
+
+# 系统杂物
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 打包产物（放到 Releases，不要提交）
+*.zip
+*.7z
+*.tgz

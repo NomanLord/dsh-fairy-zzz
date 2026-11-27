@@ -1,0 +1,69 @@
+{
+  "name": "dsh-fairy-zzz",
+  "version": "1.2.0",
+  "description": "绝区零 H.D.D 风格的 Fairy Ⅲ 皮肤：开机动画、眼徽核心与用量气泡、按时段问候、深浅色自动切换与对比度校验、侧栏学习代办卡片、设置页里的 Fairy 工具链动态开关，以及可选的本地 GPT-SoVITS 语音。 / Zenless Zone Zero H.D.D skin for the DSH Web UI with boot animation, eye core, usage bubble, time-of-day greeting, theme check, study-todo card, a per-session Fairy toolchain switch in Settings, and optional local voice.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NomanLord/dsh-fairy-zzz.git"
+  },
+  "homepage": "https://github.com/NomanLord/dsh-fairy-zzz#readme",
+  "bugs": {
+    "url": "https://github.com/NomanLord/dsh-fairy-zzz/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "theme",
+    "skin",
+    "zenless-zone-zero",
+    "fairy",
+    "tts"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./toolgate": "./toolgate.js",
+    "./toolgate/locale/*.json": "./locale/toolgate/*.json",
+    "./icon": "./assets/icon-180.png",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "icon": "assets/icon-180.png",
+  "files": [
+    "index.js",
+    "client.js",
+    "memory-switch.js",
+    "toolgate.js",
+    "tool-sets.js",
+    "cordis.patch.yml",
+    "assets",
+    "presets",
+    "screenshots",
+    "screenshots.json",
+    "docs",
+    "fonts",
+    "licenses",
+    "icon.svg",
+    "install-windows.ps1",
+    "tools",
+    "README.md",
+    "LICENSE",
+    "NOTICE-fairy-dsh.md",
+    "locale"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}
