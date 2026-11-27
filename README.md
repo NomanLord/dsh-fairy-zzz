@@ -52,6 +52,7 @@
 - **主题校验（本仓库新增）**：按宿主真实设计令牌自动判定并切换深浅色，不再依赖可能慢一拍的 `theme.getTheme()` 快照；运行时对品牌名 / 用量气泡做 WCAG 对比度自检，低于阈值自动改成可读色，设置页「Fairy → 主题校验」可看结果。详见 [docs/THEME-CHECK.md](docs/THEME-CHECK.md)。
 - **语音**：开场问候是预录 wav（不依赖引擎）；自动朗读**每轮只出一段声**——回复写完时从这一轮正文里取「开头约 50 字 + 结尾约 50 字」，整段不超过 160 字，同一句（去掉空白标点后）只念一次，**不读思考正文**（避免把正文首句当分析结论拼一遍、听成念两遍）；消息旁的朗读按钮仍然念全文。**念之前统一过筛子：网址、盘符/网络/Unix 路径、带扩展名的文件名、整句英文都不念，句内英文词也删掉（只留 Fairy / HDD 两个名字），数字与中文标点保留。** 全部走本地 GPT-SoVITS（CPU 推理）。
 - **设置面板**：DSH 的「设置 → Fairy」里集中管理朗读开关、引擎状态、引擎目录、试听/重播/测试。
+- **记忆（2026-11-28，1.3.0）**：内置 [dsh-world](https://github.com/chenkezhen480/dsh-world) 依赖，Fairy 有自己的世界与房间：近期对话原文摆在眼前，更早的按原话去归档里翻；日记、「我」、认识页由她自己写。压缩换成 `dsh-world/compaction`，只留对话、把工具过程挡在摘要外。详见 [记忆与上下文](#记忆与上下文dsh-world130-起)。
 - **Fairy 工具链（2026-11-27）**：Fairy 模式的工具不是写死的 —— 设置页「Fairy → 工具链」里可以按工具勾选「删 / 加」，也可以一键切「精简 / 推荐 / 全部」。关掉的工具不会进入该会话的模型可见集合，它的名称、说明和参数 schema 就完全不计入每次请求，实测默认「推荐」比全量省掉约四成工具 token。限制由同包的 `toolgate.js` 在 **agent scope** 里用 `ctx.tools.restrict()` 落实，只对 preset 为 `fairy` 的会话生效，不碰标准模式；在线的 Fairy 会话 1–2 秒内热生效，新会话立即生效。
 - **学习代办（绳匠满级之路）**：原先单独装在 profile 里的任务面板已并入皮肤 —— 侧栏脚部（「工作区」下方）常驻一张带描边的卡片，表头钉在侧栏最下缘，抽屉从表头上方展开：新增任务、勾一下只是把它划掉留在列表里（勾选框是 16px 圆环、2px 灰边，深色与聊天输入框同灰，勾上变绿底 + 绿勾；再点一下取消勾选），**当天不进「已完成」**——关掉客户端、下次打开读到存档时才自动归档，归档日期记的是勾掉那天；归档行行尾「←」可退回待办，行尾「×」是永久删除：第一下把按钮换成「确认删除」、第二下才真删，3 秒不点自动收回，删掉的记录不进任何回收站）；展开时视口边缘若正好切到某一行，那一行整行藏掉（不露半行）。`设置 → Fairy → 学习代办` 那一行是它的**显隐开关**：打开就在侧栏脚部显示这张卡，关闭就整块不显示（清单数据仍在）。紧跟其后还有一项「已完成默认展开」开关：**默认关闭（收起）**，卡片与任务板打开时只列待办，「已完成」那一行要点箭头才展开归档；它只决定初始态，手动展开不受影响，偏好键为 `fairy.zzz.todo-done-open`。清单存在本机浏览器的 `localStorage`（`dsh.learning-todo.v1`），不联网、不调用模型。
 - **运行指示**：聊天窗口右上角内侧贴一个小动画（`assets/loading.webm`），思考 / 写入时播放；回复结束后再播 2.5 秒，然后**暂停定格、留在原位**（压到 55% 不透明度），不隐藏，也不跟输入框高度上下漂，下一轮接着播。
@@ -160,10 +161,41 @@ pnpm install --no-frozen-lockfile    # 把 tgz 的 integrity 写进 pnpm-lock.ya
 > 这一版预设自带工具插件，所以升级 DSH 后请顺带确认一下「Fairy 模式」还在正常激活：工具插件缺件会让整组加载失败。
 
 `presets/fairy-mode.patch.yml` 是同一份内容的**独立版**，留给「只想用人设、不装皮肤」的人单独合并进 profile patch；
-它用到 `dsh-claude-preset/compaction`，所以单独用时 profile 里也得装着 `dsh-claude-preset`。
+1.3.0 起它的压缩用 `dsh-world/compaction`，所以单独用时 profile 里得装着 `dsh-world`（`dsh-claude-preset` 不再需要）。
 
 > 如果你以前手动往 profile patch 里追加过 `preset-fairy`，请把旧的那段删掉，否则会出现两份同名预设。
 > 皮肤本体与这个预设互不依赖：不装预设也有皮肤，不装皮肤也能用预设。
+
+## 记忆与上下文（dsh-world，1.3.0 起）
+
+1.3.0 把 [dsh-world](https://github.com/chenkezhen480/dsh-world) 写进了 `dependencies`，并让「Fairy 模式」的压缩换成 `dsh-world/compaction`：**压缩只留你们之间的对话**，工具调用与结果不进摘要——最近做过什么由文件、日记和归档里的原话负责，不再靠一层层摘要往上滚。
+
+dsh-world 给 Fairy 一个自己的世界，默认位置 `<DSH_HOME>\worlds\fairy`：
+
+| 东西 | 在哪 |
+|---|---|
+| 人设（六层：名字 / 她是谁 / 性格 / 说话方式 / 愿景 / 补充） | `<world>\persona.md`，世界控制台的「人设」页改 |
+| 她的房间（也是她的 workspace） | `<world>\room\`，`我.md` 是自述，`认识\` 是认识页 |
+| 日记 | `<world>\diary\` |
+| 聊天原文归档 | `<world>\archive.sqlite` |
+| 世界控制台 | DSH 设置 → 世界控制台 |
+
+**装主题 ≠ 装好记忆**：DSH 的 bundle 登记在 profile 层。装完主题后，`<profile>\package.json` 的 `dsh.profile.bundles` 里必须有 `dsh-world`（插件市场 / `plugin_manager` 装包会写），profile 的 `cordis.patch.yml` 里也建议照抄下面这段，好让世界落在 Fairy 的预设与房间上：
+
+```yaml
+- id: dsh-world
+  name: dsh-world
+  config:
+    worldId: fairy
+    agentPreset: fairy
+    timeZone: Asia/Shanghai
+    companionName: Fairy
+    partnerName: 主人
+    archiveScope: workspace
+    life: true
+```
+
+改完重启 DSH；世界控制台里按「开始」，她才会住进来。默认每个晚上 23:00 回顾并压缩一次、整理「认识」（约 0.01 元/晚）、每天联网查一次 npm 新版本；不想要这些就在上面那段里写 `life: false` / `updateCheck: false`。
 
 ## 设置（设置 → Fairy）
 
